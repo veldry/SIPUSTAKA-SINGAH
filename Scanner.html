@@ -1,0 +1,205 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scanner QR - SIPUSTAKA</title>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 25px auto;
+      padding: 22px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 5px 20px #00000012;
+      text-align: center;
+    }
+
+    h2 { margin-top: 0; color: #166534; }
+
+    #reader {
+      width: 100%;
+      margin: 20px auto;
+    }
+
+    #status {
+      padding: 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      margin-top: 12px;
+      border: 0;
+      border-radius: 9px;
+      background: #166534;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #94a3b8;
+    }
+
+    .small {
+      font-size: 12px;
+      color: #64748b;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>SCANNER QR SIPUSTAKA</h2>
+    <p class="small">SMAN 1 SIBERUT TENGAH</p>
+
+    <div id="reader"></div>
+
+    <div id="status">
+      Menghubungkan kamera...
+    </div>
+
+    <button id="startButton" onclick="startCamera()" disabled>
+      Buka Kamera
+    </button>
+  </div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const mode = params.get("mode") || "";
+  const parentOrigin = params.get("parentOrigin") || "";
+
+  let scanner = null;
+  let processing = false;
+
+  function setStatus(message) {
+    document.getElementById("status").textContent = message;
+  }
+
+  function describeError(error) {
+    return [
+      error?.name || "Error",
+      error?.message || String(error)
+    ].join(": ");
+  }
+
+  async function startCamera() {
+    if (processing) return;
+
+    try {
+      document.getElementById("startButton").disabled = true;
+      setStatus("Meminta izin kamera...");
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Browser tidak mendukung akses kamera.");
+      }
+
+      // Meminta izin kamera terlebih dahulu.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+      });
+
+      stream.getTracks().forEach(track => track.stop());
+
+      const cameras = await Html5Qrcode.getCameras();
+
+      if (!cameras || cameras.length === 0) {
+        throw new Error("Kamera tidak ditemukan.");
+      }
+
+      const backCamera = cameras.find(camera =>
+        /back|rear|environment|belakang/i.test(camera.label)
+      );
+
+      const cameraId = backCamera
+        ? backCamera.id
+        : cameras[0].id;
+
+      scanner = new Html5Qrcode("reader");
+
+      await scanner.start(
+        cameraId,
+        {
+          fps: 10,
+          qrbox: { width: 230, height: 230 },
+          aspectRatio: 1
+        },
+        decodedText => sendResult(decodedText),
+        () => {}
+      );
+
+      setStatus("Kamera aktif. Arahkan QR ke kotak pemindaian.");
+
+    } catch (error) {
+      setStatus("Gagal membuka kamera: " + describeError(error));
+      document.getElementById("startButton").disabled = false;
+    }
+  }
+
+  async function sendResult(qrText) {
+    if (processing) return;
+    processing = true;
+
+    setStatus("QR berhasil dibaca. Mengirim hasil...");
+
+    try {
+      if (!window.opener || window.opener.closed) {
+        throw new Error("Halaman SIPUSTAKA tidak ditemukan.");
+      }
+
+      if (!parentOrigin) {
+        throw new Error("Alamat asal aplikasi tidak tersedia.");
+      }
+
+      if (scanner && scanner.isScanning) {
+        await scanner.stop();
+      }
+
+      window.opener.postMessage({
+        type: "SIPUSTAKA_QR",
+        mode: mode,
+        text: qrText
+      }, parentOrigin);
+
+      setStatus("QR berhasil dikirim. Menutup scanner...");
+
+      setTimeout(() => window.close(), 500);
+
+    } catch (error) {
+      processing = false;
+      setStatus("Gagal mengirim QR: " + describeError(error));
+      document.getElementById("startButton").disabled = false;
+    }
+  }
+
+  window.addEventListener("load", () => {
+    if (!parentOrigin || !mode) {
+      setStatus("Parameter scanner tidak lengkap.");
+      return;
+    }
+
+    document.getElementById("startButton").disabled = false;
+    setStatus("Siap. Tekan Buka Kamera untuk memulai.");
+  });
+</script>
+</body>
+</html>
