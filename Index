@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIPUSTAKA-SINGAH</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      text-align: center;
+      padding: 50px 15px;
+    }
+    .card {
+      max-width: 420px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+    }
+    a {
+      display: block;
+      padding: 15px;
+      margin-top: 25px;
+      background: #166534;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>SIPUSTAKA-SINGAH</h2>
+    <p>Scanner QR Perpustakaan</p>
+    <a href="scanner.html">BUKA SCANNER QR</a>
+  </div>
+</body>
+</html>
